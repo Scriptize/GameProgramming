@@ -218,7 +218,15 @@ void update()
 void render()
 {
     BeginDrawing();
-    ClearBackground(RAYWHITE);
+    if (gKyuremStatus == KWHITE) {
+        ClearBackground(ORANGE);
+    }
+    else if (gKyuremStatus == KBLACK) {
+        ClearBackground(CYAN);     
+    } 
+    else {
+        ClearBackground(RAYWHITE); 
+    }
 
     renderObject(&gKyuremTexture, &gKyuremPosition, &gKyuremScale, 0.0f);
     renderObject(&gReshiramTexture, &gReshiramPosition, &gReshiramScale, gReshiramAngle);
