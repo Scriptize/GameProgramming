@@ -222,7 +222,7 @@ void render()
         ClearBackground(ORANGE);
     }
     else if (gKyuremStatus == KBLACK) {
-        ClearBackground(CYAN);     
+        ClearBackground(SKYBLUE);     
     } 
     else {
         ClearBackground(RAYWHITE); 
