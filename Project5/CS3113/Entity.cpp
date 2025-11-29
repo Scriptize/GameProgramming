@@ -12,22 +12,62 @@ Entity::Entity() : mPosition {0.0f, 0.0f}, mMovement {0.0f, 0.0f},
 Entity::Entity(Vector2 position, Vector2 scale, const char *textureFilepath, 
     EntityType entityType) : mPosition {position}, mVelocity {0.0f, 0.0f}, 
     mAcceleration {0.0f, 0.0f}, mScale {scale}, mMovement {0.0f, 0.0f}, 
-    mColliderDimensions {scale}, mTexture {LoadTexture(textureFilepath)}, 
+    mColliderDimensions {scale}, 
     mTextureType {SINGLE}, mDirection {RIGHT}, mAnimationAtlas {{}}, 
     mAnimationIndices {}, mFrameSpeed {0}, mSpeed {DEFAULT_SPEED}, 
-    mAngle {0.0f}, mEntityType {entityType} { }
+    mAngle {0.0f}, mEntityType {entityType} {
+        mTexturePath = textureFilepath;
+        mTexture = LoadTexture(textureFilepath);
+    }
 
 Entity::Entity(Vector2 position, Vector2 scale, const char *textureFilepath, 
         TextureType textureType, Vector2 spriteSheetDimensions, std::map<Direction, 
         std::vector<int>> animationAtlas, EntityType entityType) : 
         mPosition {position}, mVelocity {0.0f, 0.0f}, 
         mAcceleration {0.0f, 0.0f}, mMovement { 0.0f, 0.0f }, mScale {scale},
-        mColliderDimensions {scale}, mTexture {LoadTexture(textureFilepath)}, 
+        mColliderDimensions {scale}, 
         mTextureType {ATLAS}, mSpriteSheetDimensions {spriteSheetDimensions},
         mAnimationAtlas {animationAtlas}, mDirection {RIGHT},
         mAnimationIndices {animationAtlas.at(RIGHT)}, 
         mFrameSpeed {DEFAULT_FRAME_SPEED}, mAngle { 0.0f }, 
-        mSpeed { DEFAULT_SPEED }, mEntityType {entityType} { }
+        mSpeed { DEFAULT_SPEED }, mEntityType {entityType} {
+            mTexturePath = textureFilepath;
+            mTexture = LoadTexture(textureFilepath);
+
+        }
+
+
+Entity::Entity(const Entity& other) {
+    mPosition   = other.mPosition;
+    mScale      = other.mScale;
+    mColliderDimensions = other.mColliderDimensions;
+
+    mVelocity   = {0,0};
+    mAcceleration = {0,0};
+    mMovement   = {0,0};
+
+    mTexturePath = other.mTexturePath;              
+    mTexture = LoadTexture(mTexturePath.c_str());   
+
+    mTextureType = other.mTextureType;
+    mSpriteSheetDimensions = other.mSpriteSheetDimensions;
+
+    mAnimationAtlas  = other.mAnimationAtlas;
+    mAnimationIndices = other.mAnimationIndices;
+
+    mFrameSpeed = other.mFrameSpeed;
+    mDirection = other.mDirection;
+
+    mSpeed = other.mSpeed;
+    mAngle = other.mAngle;
+    mEntityType = other.mEntityType;
+
+    mCurrentFrameIndex = 0;
+    mAnimationTime = 0;
+
+    mRestoreSpritesheet = false;
+}
+
 
 Entity::~Entity() { UnloadTexture(mTexture); };
 
@@ -277,6 +317,28 @@ void Entity::update(float deltaTime, Entity *player, Map *map,
         animate(deltaTime);
 }
 
+void Entity::updateSimple(float dt)
+{
+    if (mRestoreSpritesheet) {
+        mSwapTimer += dt;
+
+        if (mSwapTimer >= mSwapDuration) {
+            // restore original sheet
+            mTexture = mSavedTextureSheet;
+            mSpriteSheetDimensions = mSavedSheetDims;
+            mAnimationIndices = mSavedFrames;
+
+            mRestoreSpritesheet = false;
+        }
+    }
+
+    if (mTextureType == ATLAS)
+        animate(dt);
+}
+
+
+
+
 void Entity::render()
 {
     if(mEntityStatus == INACTIVE) return;
@@ -348,4 +410,47 @@ void Entity::displayCollider()
         colliderBox.height, // Height
         GREEN               // Color
     );
+}
+
+void Entity::animateOnce(float deltaTime)
+{
+    mAnimationIndices = mAnimationAtlas.at(mDirection);
+
+    mAnimationTime += deltaTime;
+    float framesPerSecond = 1.0f / mFrameSpeed;
+
+    if (mAnimationTime >= framesPerSecond)
+    {
+        mAnimationTime = 0.0f;
+        mCurrentFrameIndex++;
+
+        // Clamp to last frame (no looping)
+        if (mCurrentFrameIndex >= (int)mAnimationIndices.size()) {
+            mCurrentFrameIndex = mAnimationIndices.size() - 1;
+        }
+    }
+}
+
+void Entity::swapSpritesheet(
+    const char* filepath,
+    Vector2 newSheetDims,
+    std::vector<int> newFrames,
+    float duration
+){
+    // Save old sheet
+    mSavedTextureSheet = mTexture;
+    mSavedSheetDims    = mSpriteSheetDimensions;
+    mSavedFrames       = mAnimationIndices;
+
+    // Load new sheet + apply
+    mTexture = LoadTexture(filepath);
+    mSpriteSheetDimensions = newSheetDims;
+    mAnimationIndices = newFrames;
+    mCurrentFrameIndex = 0;
+    mAnimationTime = 0;
+
+    // enable timed restore
+    mRestoreSpritesheet = true;
+    mSwapTimer = 0.0f;
+    mSwapDuration = duration;
 }

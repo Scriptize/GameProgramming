@@ -19,7 +19,7 @@ private:
     Vector2 mColliderDimensions;
 
     Texture2D mTexture;
-    bool mOwnsTexture = false;          // ✅ NEW FLAG
+    bool mOwnsTexture = false;         
     TextureType mTextureType;
     Vector2 mSpriteSheetDimensions;
 
@@ -115,7 +115,7 @@ public:
         mOwnsTexture = true;
     }
 
-    void setTexture(Texture2D tex); // ✅ shared texture overload
+    void setTexture(Texture2D tex); 
 };
 
 #endif

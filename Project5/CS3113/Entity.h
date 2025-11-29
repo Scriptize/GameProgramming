@@ -5,7 +5,7 @@
 
 enum Direction    { LEFT, UP, RIGHT, DOWN              }; // For walking
 enum EntityStatus { ACTIVE, INACTIVE                   };
-enum EntityType   { PLAYER, BLOCK, PLATFORM, NPC, NONE };
+enum EntityType   { PLAYER, BLOCK, PLATFORM, NPC, NONE, FX };
 enum AIType       { WANDERER, FOLLOWER                 };
 enum AIState      { WALKING, IDLE, FOLLOWING           };
 
@@ -16,10 +16,19 @@ private:
     Vector2 mMovement;
     Vector2 mVelocity;
     Vector2 mAcceleration;
+    
 
     Vector2 mScale;
     Vector2 mColliderDimensions;
-    
+    Texture2D mSavedTextureSheet;
+    Vector2   mSavedSheetDims;
+    std::vector<int> mSavedFrames;
+    bool mRestoreSpritesheet = false;
+    float mSwapTimer = 0.0f;
+    float mSwapDuration = 0.0f;
+
+
+
     Texture2D mTexture;
     TextureType mTextureType;
     Vector2 mSpriteSheetDimensions;
@@ -33,6 +42,7 @@ private:
     float mAnimationTime = 0.0f;
 
     bool mIsJumping = false;
+    bool mLoopAnimation = true;
     float mJumpingPower = 0.0f;
 
     int mSpeed;
@@ -75,6 +85,8 @@ public:
     static constexpr int   DEFAULT_SPEED         = 200;
     static constexpr int   DEFAULT_FRAME_SPEED   = 14;
     static constexpr float Y_COLLISION_THRESHOLD = 0.5f;
+    std::string mTexturePath;
+
 
     Entity();
     Entity(Vector2 position, Vector2 scale, const char *textureFilepath, 
@@ -83,12 +95,22 @@ public:
         TextureType textureType, Vector2 spriteSheetDimensions, 
         std::map<Direction, std::vector<int>> animationAtlas, 
         EntityType entityType);
+    Entity(const Entity& other);
+
     ~Entity();
 
     void update(float deltaTime, Entity *player, Map *map, 
         Entity *collidableEntities, int collisionCheckCount);
+    void updateSimple(float deltaTime);
     void render();
     void normaliseMovement() { Normalise(&mMovement); }
+    void flashTexture(Texture2D newTex, float duration);
+    void swapSpritesheet(
+        const char* filepath,
+        Vector2 newSheetDims,
+        std::vector<int> newFrames,
+        float duration
+    );
 
     void jump()       { mIsJumping = true;  }
     void activate()   { mEntityStatus  = ACTIVE;   }
@@ -122,13 +144,16 @@ public:
     EntityType  getEntityType()            const { return mEntityType;            }
     AIType      getAIType()                const { return mAIType;                }
     AIState     getAIState()               const { return mAIState;               }
+    bool animationIsDoneOnce() const {return mCurrentFrameIndex >= (int)mAnimationIndices.size() - 1;}
+    void animateOnce(float deltaTime);
+
 
     
     bool isCollidingTop()    const { return mIsCollidingTop;    }
     bool isCollidingBottom() const { return mIsCollidingBottom; }
 
     std::map<Direction, std::vector<int>> getAnimationAtlas() const { return mAnimationAtlas; }
-
+    void resetAnimation() { mCurrentFrameIndex = 0; }
     void setPosition(Vector2 newPosition)
         { mPosition = newPosition;                 }
     void setMovement(Vector2 newMovement)
@@ -146,6 +171,8 @@ public:
     void setSpeed(int newSpeed)
         { mSpeed  = newSpeed;                      }
     void setFrameSpeed(int newSpeed)
+        { mFrameSpeed = newSpeed;                  }
+    void setFrameSpeed(float newSpeed)
         { mFrameSpeed = newSpeed;                  }
     void setJumpingPower(float newJumpingPower)
         { mJumpingPower = newJumpingPower;         }
